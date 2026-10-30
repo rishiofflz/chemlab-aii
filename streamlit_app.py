@@ -1,270 +1,374 @@
 import streamlit as st
+import streamlit.components.v1 as components
+import plotly.express as px
+import pandas as pd
 import re
 from collections import Counter
+from datetime import datetime
 
 st.set_page_config(
-    page_title="ChemLab AI | Chemistry Explorer",
-    page_icon="🧪",
+    page_title="NEBULA CHEM | Molecular Universe",
+    page_icon="🧬",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
+# ---------- NEON INTERFACE ----------
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
-:root { --ink:#edf5ff; --muted:#9babc5; --cyan:#70e7f2; --violet:#a99bff; }
-html, body, [class*="css"] { font-family:'DM Sans',sans-serif; }
-.stApp { background: radial-gradient(ellipse at 85% 0%, #202052 0%, transparent 38%), #080d19; color:var(--ink); }
-[data-testid="stSidebar"] { background:#0d1425; border-right:1px solid #28334c; }
-h1,h2,h3 { font-family:'Space Grotesk',sans-serif !important; letter-spacing:-.7px; color:#f2f6ff; }
-p, label, .stMarkdown { color:#c7d4e9; }
-.hero { padding:1.6rem 0 1rem; }
-.eyebrow { color:#70e7f2; letter-spacing:2px; font-size:.76rem; font-weight:700; }
-.gradient { background:linear-gradient(100deg,#70e7f2,#b2a1ff); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
-.lead { color:#9babc5; font-size:1.06rem; max-width:780px; }
-.panel { background:linear-gradient(145deg,#151f35,#0e1526); border:1px solid #2b3854; border-radius:18px; padding:20px 22px; min-height:130px; }
-.panel-label { color:#91a5c8; font-size:.78rem; text-transform:uppercase; letter-spacing:1px; }
-.panel-value { color:#f5f8ff; font-family:'Space Grotesk',sans-serif; font-size:1.45rem; font-weight:700; margin-top:9px; }
-.panel-note { color:#91a5c8; font-size:.83rem; margin-top:4px; }
-div[data-testid="stMetric"] { background:#121b2e; border:1px solid #2b3854; padding:14px; border-radius:14px; }
-div[data-testid="stMetricLabel"] { color:#9babc5; }
-.stButton>button { border-radius:10px; border:1px solid #5dd7e5; background:linear-gradient(100deg,#70e7f2,#b2a1ff); color:#09111e; font-weight:700; }
-.stTabs [data-baseweb="tab-list"] { gap:10px; }
-.stTabs [data-baseweb="tab"] { background:#111a2d; border-radius:10px 10px 0 0; }
-hr { border-color:#28334c; }
-.small { font-size:.82rem; color:#91a5c8; }
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+:root { --cyan:#5ef2ff; --violet:#a78bfa; --green:#8cffb5; --ink:#eef5ff; }
+html, body, [class*="css"] { font-family:Inter,sans-serif; }
+.stApp {
+ background:
+ radial-gradient(ellipse at 12% 8%, rgba(0,210,255,.15), transparent 30%),
+ radial-gradient(ellipse at 88% 15%, rgba(139,92,246,.16), transparent 32%),
+ linear-gradient(135deg,#050914 0%,#080d1b 55%,#09091a 100%);
+ color:var(--ink);
+}
+[data-testid="stSidebar"] {
+ background:linear-gradient(180deg,#0b1325,#101026);
+ border-right:1px solid rgba(94,242,255,.22);
+}
+h1,h2,h3 { font-family:'Space Grotesk',sans-serif !important; color:#f4f8ff; }
+p, label, .stMarkdown { color:#c6d5ed; }
+.hero {
+ padding:28px 30px; border:1px solid rgba(94,242,255,.35);
+ border-radius:24px; margin:10px 0 25px;
+ background:linear-gradient(115deg,rgba(14,34,58,.88),rgba(34,20,65,.66));
+ box-shadow:0 0 35px rgba(36,213,255,.09), inset 0 0 30px rgba(167,139,250,.05);
+}
+.eyebrow { color:var(--cyan); letter-spacing:3px; font-size:.75rem; font-weight:800; }
+.gradient {
+ background:linear-gradient(90deg,#5ef2ff,#a78bfa,#8cffb5);
+ -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+}
+.subtle { color:#9aacca; }
+.neon-card {
+ background:linear-gradient(145deg,rgba(18,31,55,.92),rgba(15,16,39,.92));
+ border:1px solid rgba(94,242,255,.24); border-radius:18px;
+ padding:19px 21px; min-height:132px;
+ box-shadow:0 0 22px rgba(94,242,255,.045);
+}
+.card-label { color:#8ea8cb; font-size:.74rem; letter-spacing:1.5px; text-transform:uppercase; }
+.card-value { color:#f4f8ff; font-family:'Space Grotesk'; font-size:1.42rem; font-weight:700; margin-top:9px; }
+.card-note { color:#9aacca; font-size:.83rem; margin-top:5px; }
+div[data-testid="stMetric"] {
+ background:rgba(15,27,48,.82); border:1px solid rgba(94,242,255,.22);
+ padding:14px; border-radius:14px;
+}
+div[data-testid="stMetricLabel"] { color:#9aacca; }
+.stButton>button {
+ border:1px solid #5ef2ff; border-radius:11px;
+ background:linear-gradient(100deg,#5ef2ff,#a78bfa);
+ color:#06101c; font-weight:800; transition:.2s;
+}
+.stButton>button:hover { box-shadow:0 0 18px rgba(94,242,255,.45); border-color:#fff; }
+.stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] {
+ background:#0c1425 !important; color:#eef5ff !important;
+ border-color:rgba(94,242,255,.28) !important;
+}
+.stTabs [data-baseweb="tab"] { background:#101a30; border-radius:10px 10px 0 0; }
+hr { border-color:rgba(94,242,255,.2); }
+div[data-testid="stAlert"] { border-radius:12px; }
+footer {visibility:hidden;}
 </style>
 """, unsafe_allow_html=True)
 
+# ---------- CHEMISTRY ENGINE ----------
 ELEMENTS = {
-    "H": ("Hydrogen", 1, 1.008), "He": ("Helium", 2, 4.0026),
-    "Li": ("Lithium", 3, 6.94), "Be": ("Beryllium", 4, 9.0122),
-    "B": ("Boron", 5, 10.81), "C": ("Carbon", 6, 12.011),
-    "N": ("Nitrogen", 7, 14.007), "O": ("Oxygen", 8, 15.999),
-    "F": ("Fluorine", 9, 18.998), "Ne": ("Neon", 10, 20.180),
-    "Na": ("Sodium", 11, 22.990), "Mg": ("Magnesium", 12, 24.305),
-    "Al": ("Aluminium", 13, 26.982), "Si": ("Silicon", 14, 28.085),
-    "P": ("Phosphorus", 15, 30.974), "S": ("Sulfur", 16, 32.06),
-    "Cl": ("Chlorine", 17, 35.45), "Ar": ("Argon", 18, 39.948),
-    "K": ("Potassium", 19, 39.098), "Ca": ("Calcium", 20, 40.078),
-    "Fe": ("Iron", 26, 55.845), "Cu": ("Copper", 29, 63.546),
-    "Zn": ("Zinc", 30, 65.38), "Br": ("Bromine", 35, 79.904),
-    "Ag": ("Silver", 47, 107.868), "I": ("Iodine", 53, 126.904),
-    "Ba": ("Barium", 56, 137.327), "Au": ("Gold", 79, 196.967),
-    "Hg": ("Mercury", 80, 200.592), "Pb": ("Lead", 82, 207.2),
+    "H":("Hydrogen",1,1.008), "C":("Carbon",6,12.011), "N":("Nitrogen",7,14.007),
+    "O":("Oxygen",8,15.999), "F":("Fluorine",9,18.998), "Na":("Sodium",11,22.990),
+    "Mg":("Magnesium",12,24.305), "Al":("Aluminium",13,26.982), "Si":("Silicon",14,28.085),
+    "P":("Phosphorus",15,30.974), "S":("Sulfur",16,32.06), "Cl":("Chlorine",17,35.45),
+    "K":("Potassium",19,39.098), "Ca":("Calcium",20,40.078), "Fe":("Iron",26,55.845),
+    "Cu":("Copper",29,63.546), "Zn":("Zinc",30,65.38), "Br":("Bromine",35,79.904),
+    "Ag":("Silver",47,107.868), "I":("Iodine",53,126.904), "Ba":("Barium",56,137.327),
+    "Au":("Gold",79,196.967), "Hg":("Mercury",80,200.592), "Pb":("Lead",82,207.2)
 }
 
 def parse_formula(formula):
-    """Parse common chemical formulas with parentheses, e.g. Ca(OH)2."""
     formula = formula.replace(" ", "")
     if not formula or not re.fullmatch(r"[A-Za-z0-9()]+", formula):
-        raise ValueError("Enter a formula using element symbols, numbers, and parentheses only.")
-    token_pattern = re.compile(r"([A-Z][a-z]?|\d+|\(|\))")
-    tokens = token_pattern.findall(formula)
+        raise ValueError("Use element symbols, subscripts as numbers, and parentheses only.")
+    tokens = re.findall(r"[A-Z][a-z]?|\d+|[()]", formula)
     if "".join(tokens) != formula:
-        raise ValueError("Check the formula's capitalization and symbols.")
-    stack = [Counter()]
-    i = 0
+        raise ValueError("Check element capitalization and formula syntax.")
+    stack, i = [Counter()], 0
     while i < len(tokens):
-        tok = tokens[i]
-        if tok == "(":
+        token = tokens[i]
+        if token == "(":
             stack.append(Counter())
-        elif tok == ")":
+        elif token == ")":
             if len(stack) == 1:
-                raise ValueError("There is an unmatched closing parenthesis.")
+                raise ValueError("Unmatched closing parenthesis.")
             group = stack.pop()
             i += 1
-            multiplier = int(tokens[i]) if i < len(tokens) and tokens[i].isdigit() else 1
-            if multiplier < 1:
-                raise ValueError("Subscripts must be positive integers.")
-            stack[-1].update({el: n * multiplier for el, n in group.items()})
+            mult = int(tokens[i]) if i < len(tokens) and tokens[i].isdigit() else 1
+            if mult < 1: raise ValueError("Subscripts must be positive.")
+            stack[-1].update({k:v*mult for k,v in group.items()})
             if i < len(tokens) and tokens[i].isdigit():
                 pass
-        elif tok.isdigit():
-            raise ValueError("A number must follow an element or a closing parenthesis.")
+        elif token.isdigit():
+            raise ValueError("A number must follow an element or closing parenthesis.")
         else:
-            if tok not in ELEMENTS:
-                raise ValueError(f"Element symbol '{tok}' is not in this demo's element list.")
+            if token not in ELEMENTS:
+                raise ValueError(f"'{token}' is not in this app's element dataset.")
             i += 1
             count = int(tokens[i]) if i < len(tokens) and tokens[i].isdigit() else 1
-            if count < 1:
-                raise ValueError("Subscripts must be positive integers.")
-            stack[-1][tok] += count
+            if count < 1: raise ValueError("Subscripts must be positive.")
+            stack[-1][token] += count
             if i < len(tokens) and tokens[i].isdigit():
                 pass
         i += 1
-    if len(stack) != 1:
-        raise ValueError("There is an unmatched opening parenthesis.")
-    if not stack[0]:
-        raise ValueError("Could not read the formula.")
+    if len(stack) != 1: raise ValueError("Unmatched opening parenthesis.")
+    if not stack[0]: raise ValueError("Could not read the formula.")
     return stack[0]
 
 def formula_mass(counts):
-    return sum(ELEMENTS[el][2] * n for el, n in counts.items())
+    return sum(ELEMENTS[e][2] * n for e,n in counts.items())
 
 def balance_equation(equation):
-    # Educational balancer for simple equations using non-negative integer search.
-    # It uses sympy if available; otherwise explain the limitation.
     try:
-        from sympy import symbols
-        from sympy.parsing.sympy_parser import parse_expr
-        from sympy import Matrix
-        from functools import reduce
+        import sympy as sp
         import math
     except Exception:
-        return None, "Install sympy to use equation balancing."
+        return None, "SymPy is missing. Add sympy to requirements.txt and redeploy."
     parts = re.split(r"\s*(?:->|→|=)\s*", equation.strip())
-    if len(parts) != 2:
-        return None, "Use an equation like H2 + O2 -> H2O."
-    def side_formulas(side):
-        fs = [x.strip() for x in side.split("+")]
-        if not fs or any(not x for x in fs):
-            raise ValueError("Separate formulas with + and use -> between sides.")
-        return fs
+    if len(parts) != 2: return None, "Use a format such as H2 + O2 -> H2O."
+    left, right = [x.strip() for x in parts[0].split("+")], [x.strip() for x in parts[1].split("+")]
+    if any(not x for x in left + right): return None, "Separate each substance with +."
     try:
-        left, right = side_formulas(parts[0]), side_formulas(parts[1])
-        formulas = [parse_formula(f) for f in left + right]
-        elements = sorted(set().union(*(set(f.keys()) for f in formulas)))
-        import sympy as sp
-        mat = []
-        for el in elements:
-            mat.append([f.get(el, 0) for f in formulas[:len(left)]] +
-                       [-f.get(el, 0) for f in formulas[len(left):]])
-        null = sp.Matrix(mat).nullspace()
-        if not null:
-            return None, "No balance found. Check that the formulas are correct."
+        formulas = [parse_formula(x) for x in left + right]
+        elements = sorted(set().union(*(set(f) for f in formulas)))
+        matrix = [[f.get(el,0) * (1 if j < len(left) else -1)
+                   for j,f in enumerate(formulas)] for el in elements]
+        null = sp.Matrix(matrix).nullspace()
+        if not null: return None, "No balance found. Check the formulas."
         vec = null[0]
-        denoms = [int(v.q) for v in vec]
-        lcm = sp.ilcm(*denoms)
+        lcm = sp.ilcm(*[int(v.q) for v in vec])
         nums = [int(v*lcm) for v in vec]
-        if all(n < 0 for n in nums):
-            nums = [-n for n in nums]
-        if any(n <= 0 for n in nums):
-            return None, "This equation needs a different balancing approach."
+        if all(n < 0 for n in nums): nums = [-n for n in nums]
+        if any(n <= 0 for n in nums): return None, "This equation needs a different balancing method."
         gcd = math.gcd(*nums)
         nums = [n//gcd for n in nums]
-        def render(fs, ns):
-            return " + ".join((("" if n == 1 else str(n)) + f) for f, n in zip(fs, ns))
-        return render(left, nums[:len(left)]) + " → " + render(right, nums[len(left):]), None
-    except Exception as e:
-        return None, str(e)
+        render = lambda fs, ns: " + ".join(("" if n == 1 else str(n)) + f for f,n in zip(fs,ns))
+        return render(left,nums[:len(left)]) + " → " + render(right,nums[len(left):]), None
+    except Exception as exc:
+        return None, str(exc)
 
-st.sidebar.markdown("## 🧪 ChemLab AI")
-st.sidebar.caption("Chemistry learning studio")
-page = st.sidebar.radio("Navigate", ["Overview", "Formula Analyzer", "Equation Balancer", "Periodic Table", "Learn & Quiz"])
+# ---------- OPTIONAL 3D ENGINE ----------
+def make_3d_html(smiles, style):
+    try:
+        from rdkit import Chem
+        from rdkit.Chem import AllChem
+        import py3Dmol
+        mol = Chem.MolFromSmiles(smiles)
+        if mol is None: return None, "That SMILES string could not be parsed."
+        mol = Chem.AddHs(mol)
+        status = AllChem.EmbedMolecule(mol, randomSeed=7)
+        if status != 0: return None, "3D coordinate generation failed for this molecule."
+        AllChem.UFFOptimizeMolecule(mol, maxIters=200)
+        block = Chem.MolToMolBlock(mol)
+        viewer = py3Dmol.view(width=900, height=520)
+        viewer.addModel(block, "mol")
+        styles = {
+            "Ball & stick":{"stick":{"radius":0.16},"sphere":{"scale":0.25}},
+            "Space filling":{"sphere":{"scale":0.38}},
+            "Stick":{"stick":{"radius":0.22}}
+        }
+        viewer.setStyle(styles[style])
+        viewer.setBackgroundColor("#070d1b")
+        viewer.zoomTo()
+        return viewer._make_html(), None
+    except ImportError:
+        return None, "3D packages are not installed yet. Check requirements.txt and redeploy."
+    except Exception as exc:
+        return None, f"3D engine message: {exc}"
+
+# ---------- SIDEBAR ----------
+st.sidebar.markdown("# 🧬 NEBULA CHEM")
+st.sidebar.markdown("<div class='subtle'>AI MOLECULAR UNIVERSE · STUDENT EDITION</div>", unsafe_allow_html=True)
+page = st.sidebar.radio("NAVIGATION", [
+    "Command Center", "3D Molecular Studio", "Molecular Intelligence",
+    "Reaction Simulator", "Chemistry Assistant", "Research Report"
+])
 st.sidebar.markdown("---")
-st.sidebar.markdown("**Learning first**")
-st.sidebar.caption("Use this app to explore chemistry concepts. Always follow your teacher's and laboratory's safety instructions.")
-st.sidebar.markdown('<p class="small">Student project • Chemistry + code</p>', unsafe_allow_html=True)
+student_name = st.sidebar.text_input("Student name", placeholder="Enter your name")
+reg_no = st.sidebar.text_input("Registration number", placeholder="Optional")
+st.sidebar.markdown("---")
+st.sidebar.caption("Digital chemistry learning environment. No physical laboratory procedures are performed here.")
 
-st.markdown('<div class="hero"><div class="eyebrow">CHEMISTRY • DATA • DISCOVERY</div><h1 style="font-size:3.25rem;line-height:1.08">Explore the science<br><span class="gradient">behind every reaction.</span></h1><p class="lead">Welcome to ChemLab AI — an interactive chemistry learning app with a molecular formula analyzer, equation balancing, periodic table explorer, and quick concept checks.</p></div>', unsafe_allow_html=True)
+# ---------- HERO ----------
+st.markdown("""
+<div class="hero">
+ <div class="eyebrow">MOLECULES · COMPUTATION · DISCOVERY</div>
+ <h1 style="font-size:3.15rem;line-height:1.05;margin:.55rem 0">
+ Enter the <span class="gradient">Molecular Universe.</span>
+ </h1>
+ <p style="font-size:1.05rem;color:#a9bbd7;max-width:850px">
+ A neon-lit computational chemistry workspace for exploring molecular geometry,
+ chemical properties, reactions and scientific ideas.
+ </p>
+</div>
+""", unsafe_allow_html=True)
 
-if page == "Overview":
-    a,b,c = st.columns(3)
-    with a: st.markdown('<div class="panel"><div class="panel-label">01 / Analyze</div><div class="panel-value">Formula Explorer</div><div class="panel-note">Count atoms and estimate molar mass.</div></div>', unsafe_allow_html=True)
-    with b: st.markdown('<div class="panel"><div class="panel-label">02 / Understand</div><div class="panel-value">Equation Balancer</div><div class="panel-note">Explore conservation of atoms.</div></div>', unsafe_allow_html=True)
-    with c: st.markdown('<div class="panel"><div class="panel-label">03 / Discover</div><div class="panel-value">Periodic Table</div><div class="panel-note">Look up selected element properties.</div></div>', unsafe_allow_html=True)
+# ---------- PAGES ----------
+if page == "Command Center":
+    st.subheader("◈ Mission Control")
+    c1,c2,c3,c4 = st.columns(4)
+    for col, label, value, note in [
+        (c1,"CORE ENGINE","RDKit","Molecular structures"),
+        (c2,"VISUAL MODE","3D / 2D","Interactive exploration"),
+        (c3,"DATA TOOLS","Descriptors","Molecular properties"),
+        (c4,"LEARNING MODE","Active","Concept-first workflow")
+    ]:
+        with col:
+            st.markdown(f"<div class='neon-card'><div class='card-label'>{label}</div><div class='card-value'>{value}</div><div class='card-note'>{note}</div></div>",unsafe_allow_html=True)
     st.write("")
-    st.subheader("Your chemistry workspace")
-    left,right = st.columns([1.15, .85], gap="large")
+    left,right = st.columns([1.2,.8], gap="large")
     with left:
-        st.markdown("### 🧬 From symbols to structure")
-        st.write("A chemical formula tells you which elements are present and how many atoms of each element appear in a substance. The formula analyzer breaks a formula into its elemental counts and estimates its molar mass.")
-        st.markdown("### ⚖️ Matter is conserved")
-        st.write("A balanced chemical equation has the same number of atoms of each element on both sides. The equation tool helps illustrate this principle for common classroom examples.")
+        st.markdown("### ✦ Welcome to your digital lab")
+        st.write("Explore how molecular structure connects to measurable chemical properties. Enter a SMILES string, generate a 3D model, inspect descriptors, and compare your observations.")
+        st.markdown("#### Suggested exploration path")
+        st.markdown("**01** — Open the 3D Molecular Studio and load a sample molecule.  \n**02** — Inspect its shape and atom arrangement.  \n**03** — Review molecular descriptors.  \n**04** — Record findings in the research report.")
     with right:
-        st.markdown("### ✨ Try a quick example")
-        example = st.selectbox("Choose a formula", ["H2O", "CO2", "NaCl", "Ca(OH)2", "C6H12O6"])
-        if st.button("Analyze example", use_container_width=True):
-            try:
-                counts = parse_formula(example)
-                st.success(f"{example}: " + ", ".join(f"{el} = {n}" for el,n in counts.items()))
-                st.metric("Approx. molar mass", f"{formula_mass(counts):.3f} g/mol")
-            except ValueError as e:
-                st.error(str(e))
-    st.info("This is a chemistry-learning tool, not a substitute for a textbook, teacher, or laboratory safety guidance.")
+        st.markdown("### ⚡ Quick launch")
+        quick = st.selectbox("Choose a sample molecule", ["Water · O", "Ethanol · CCO", "Caffeine · Cn1c(=O)c2c(ncn2C)n(C)c1=O", "Glucose · C(C1C(C(C(C(O1)O)O)O)O)O"])
+        if st.button("Open molecule in studio", use_container_width=True):
+            st.session_state["smiles_input"] = quick.split(" · ",1)[1]
+            st.session_state["selected_page"] = "3D Molecular Studio"
+            st.info("Choose '3D Molecular Studio' from the sidebar to view it.")
+    st.info("Presentation tip: demonstrate one molecule from input → 3D model → property report. This tells a clear scientific story.")
 
-elif page == "Formula Analyzer":
-    st.subheader("🧬 Molecular Formula Analyzer")
-    st.write("Enter a formula such as `H2O`, `CO2`, `NaCl`, or `Ca(OH)2`. Use correct element capitalization.")
-    formula = st.text_input("Chemical formula", value="H2O", max_chars=80)
-    if st.button("Analyze formula", type="primary"):
-        try:
-            counts = parse_formula(formula)
-            total = sum(counts.values())
-            mass = formula_mass(counts)
-            x,y,z = st.columns(3)
-            x.metric("Different elements", len(counts))
-            y.metric("Total atoms per formula unit", total)
-            z.metric("Molar mass", f"{mass:.3f} g/mol")
-            st.markdown("#### Element breakdown")
-            rows = [{"Symbol": el, "Element": ELEMENTS[el][0], "Atom count": n,
-                     "Atomic mass (u)": ELEMENTS[el][2],
-                     "Mass contribution (g/mol)": ELEMENTS[el][2]*n} for el,n in counts.items()]
-            st.dataframe(rows, use_container_width=True, hide_index=True)
-            st.caption("Masses are approximate standard atomic weights. This demo supports a selected set of elements and parentheses; it does not interpret hydrates, ionic charges, or isotope notation.")
-        except ValueError as e:
-            st.error(str(e))
-
-elif page == "Equation Balancer":
-    st.subheader("⚖️ Chemical Equation Balancer")
-    st.write("Balance common equations by conserving each element's atom count.")
-    equation = st.text_input("Unbalanced equation", value="H2 + O2 -> H2O")
-    st.caption("Use + between substances and ->, →, or = between reactants and products.")
-    if st.button("Balance equation", type="primary"):
-        result, err = balance_equation(equation)
-        if result:
-            st.success(result)
-            st.markdown("**Why it works:** each element has the same total number of atoms on both sides. Only coefficients change; chemical formulas stay the same.")
-        else:
-            st.error(err or "Unable to balance this equation.")
-    st.markdown("#### Try these examples")
-    st.code("H2 + O2 -> H2O\nFe + O2 -> Fe2O3\nNa + Cl2 -> NaCl\nC3H8 + O2 -> CO2 + H2O")
-    st.caption("The balancer is intended for educational practice and may not handle every unusual equation or reaction type.")
-
-elif page == "Periodic Table":
-    st.subheader("🔎 Selected Element Explorer")
-    st.write("Search the included set of common elements by symbol or name.")
-    choice = st.selectbox("Choose an element", list(ELEMENTS.keys()), format_func=lambda x: f"{x} — {ELEMENTS[x][0]}")
-    name, number, mass = ELEMENTS[choice]
-    x,y,z = st.columns(3)
-    x.metric("Atomic number", number)
-    y.metric("Atomic mass", f"{mass:g} u")
-    z.metric("Symbol", choice)
-    st.markdown(f"### {name} ({choice})")
-    st.write(f"**Atomic number:** {number}  \n**Approximate atomic mass:** {mass:g} u  \n**Element symbol:** {choice}")
-    st.caption("This is a selected-element lookup, not a complete periodic table. Values are approximate and intended for learning.")
-
-else:
-    st.subheader("📚 Learn & Quiz")
-    topics = {
-        "Atoms and elements": "An atom is the smallest unit of an element that retains its chemical identity. The number of protons determines the element.",
-        "Chemical formulas": "Subscripts show how many atoms of an element are represented in a formula. For example, H2O contains two hydrogen atoms and one oxygen atom per molecule.",
-        "Conservation of mass": "In an ordinary chemical reaction, atoms are rearranged rather than created or destroyed. A balanced equation reflects this by keeping atom counts equal on both sides.",
-        "Moles and molar mass": "One mole contains Avogadro's number of specified entities. Molar mass is the mass of one mole, commonly expressed in grams per mole (g/mol).",
-        "Acids and bases": "In the Brønsted–Lowry model, acids donate protons and bases accept protons. The pH scale is commonly used to describe aqueous acidity."
+elif page == "3D Molecular Studio":
+    st.subheader("✧ 3D Molecular Studio")
+    st.write("Enter a SMILES string to generate a 3D molecular model. The 3D engine uses RDKit coordinates and py3Dmol rendering.")
+    samples = {
+        "Water":"O", "Methane":"C", "Ethanol":"CCO", "Acetic acid":"CC(=O)O",
+        "Benzene":"c1ccccc1", "Caffeine":"Cn1c(=O)c2c(ncn2C)n(C)c1=O",
+        "Glucose":"C(C1C(C(C(C(O1)O)O)O)O)O"
     }
-    topic = st.selectbox("Choose a topic", list(topics))
-    st.markdown(f'<div class="panel"><div class="panel-label">Study note</div><p style="font-size:1rem;color:#e5edff">{topics[topic]}</p></div>', unsafe_allow_html=True)
-    st.write("")
-    questions = [
-        ("What does the subscript 2 mean in H₂O?", ["Two oxygen atoms", "Two hydrogen atoms", "Two water molecules", "Two elements"], 1, "The 2 applies to H, so each water molecule has two hydrogen atoms."),
-        ("What must be equal when an equation is balanced?", ["Molecule colour", "Number of atoms of each element on both sides", "Temperature", "Number of compounds only"], 1, "Balancing conserves the count of each type of atom."),
-        ("What is the usual unit of molar mass?", ["g/mol", "cm", "L/s", "°C"], 0, "Molar mass is commonly expressed in grams per mole (g/mol)."),
-        ("Which particle determines an element's atomic number?", ["Neutron", "Electron", "Proton", "Molecule"], 2, "The atomic number equals the number of protons in the nucleus.")
-    ]
-    q, opts, answer, explain = questions[st.session_state.get("quiz_index", 0)]
-    st.markdown("### Quick knowledge check")
-    st.write(q)
-    selected = st.radio("Choose one answer", opts, key=f"quiz_{st.session_state.get('quiz_index',0)}")
-    if st.button("Check answer"):
-        if opts.index(selected) == answer:
-            st.success("Correct! " + explain)
+    selected_sample = st.selectbox("Load an example", ["Custom"] + list(samples))
+    default_smiles = samples[selected_sample] if selected_sample != "Custom" else st.session_state.get("smiles_input","CCO")
+    smiles = st.text_input("SMILES notation", value=default_smiles, key="studio_smiles")
+    style = st.selectbox("Rendering style", ["Ball & stick","Space filling","Stick"])
+    if st.button("Generate 3D structure", type="primary"):
+        html, error = make_3d_html(smiles, style)
+        if error: st.error(error)
         else:
-            st.warning("Not quite. " + explain)
-    if st.button("Next question"):
-        st.session_state.quiz_index = (st.session_state.get("quiz_index",0) + 1) % len(questions)
-        st.rerun()
+            st.success("3D structure generated.")
+            components.html(html, height=550, scrolling=False)
+            st.session_state["last_smiles"] = smiles
+    st.caption("Tip: drag to rotate, scroll or pinch to zoom. 3D generation is a computational model, not an experimental structure.")
+
+elif page == "Molecular Intelligence":
+    st.subheader("◈ Molecular Intelligence")
+    st.write("Calculate molecular descriptors from SMILES. Installations with RDKit enabled will show computed values.")
+    smiles = st.text_input("SMILES notation", value=st.session_state.get("last_smiles","CCO"), key="descriptor_smiles")
+    if st.button("Analyze molecular properties", type="primary"):
+        try:
+            from rdkit import Chem
+            from rdkit.Chem import Descriptors, rdMolDescriptors
+            mol = Chem.MolFromSmiles(smiles)
+            if mol is None:
+                st.error("Invalid SMILES. Try CCO, c1ccccc1 or Cn1c(=O)c2c(ncn2C)n(C)c1=O.")
+            else:
+                data = {
+                    "Molecular weight (g/mol)": Descriptors.MolWt(mol),
+                    "LogP": Descriptors.MolLogP(mol),
+                    "H-bond donors": Descriptors.NumHDonors(mol),
+                    "H-bond acceptors": Descriptors.NumHAcceptors(mol),
+                    "TPSA (Å²)": rdMolDescriptors.CalcTPSA(mol),
+                    "Rotatable bonds": Descriptors.NumRotatableBonds(mol),
+                    "Heavy atoms": mol.GetNumHeavyAtoms(),
+                    "Formula": rdMolDescriptors.CalcMolFormula(mol)
+                }
+                a,b,c = st.columns(3)
+                a.metric("Molecular weight",f"{data['Molecular weight (g/mol)']:.2f} g/mol")
+                b.metric("LogP",f"{data['LogP']:.2f}")
+                c.metric("Molecular formula",data["Formula"])
+                st.markdown("#### Descriptor report")
+                df = pd.DataFrame([{"Property":k,"Value":round(v,3) if isinstance(v,float) else v} for k,v in data.items()])
+                st.dataframe(df,use_container_width=True,hide_index=True)
+                numeric = {k:v for k,v in data.items() if isinstance(v,(int,float))}
+                fig = px.bar(x=list(numeric.values()),y=list(numeric.keys()),orientation="h",
+                             labels={"x":"Calculated value","y":"Descriptor"},
+                             title="Molecular descriptor profile",template="plotly_dark")
+                fig.update_layout(paper_bgcolor="rgba(0,0,0,0)",plot_bgcolor="rgba(0,0,0,0)")
+                st.plotly_chart(fig,use_container_width=True)
+                st.session_state["last_report"] = {"smiles":smiles,**data}
+        except ImportError:
+            st.error("RDKit is unavailable. Check requirements.txt and redeploy the app.")
+    st.caption("Descriptors are calculated estimates from the selected molecular representation. They are not a substitute for experimental measurements.")
+
+elif page == "Reaction Simulator":
+    st.subheader("⚡ Reaction Simulator")
+    st.write("Balance a chemical equation by conserving the number of atoms of each element.")
+    equation = st.text_input("Unbalanced equation", "H2 + O2 -> H2O")
+    if st.button("Balance reaction",type="primary"):
+        balanced,error = balance_equation(equation)
+        if error: st.error(error)
+        else:
+            st.success(balanced)
+            st.markdown("**Conservation principle:** the number of atoms of every element is equal on both sides. The formulas remain unchanged; only coefficients are adjusted.")
+    st.markdown("#### Practice examples")
+    st.code("Fe + O2 -> Fe2O3\nNa + Cl2 -> NaCl\nC3H8 + O2 -> CO2 + H2O")
+    st.caption("Educational equation balancer for common classroom examples; unusual reaction systems may need a different method.")
+
+elif page == "Chemistry Assistant":
+    st.subheader("✦ Chemistry Concept Assistant")
+    st.write("Ask a chemistry concept question. This built-in edition uses a curated knowledge bank and is not connected to a live AI model.")
+    knowledge = {
+        "bond": "A chemical bond is an attractive interaction that holds atoms or ions together. Common models include covalent, ionic and metallic bonding.",
+        "smiles": "SMILES means Simplified Molecular Input Line Entry System. It represents a molecular structure as a text string.",
+        "logp": "LogP estimates how a neutral compound partitions between an octanol-like phase and water. It is often used as one indicator of relative lipophilicity.",
+        "tpsa": "Topological polar surface area (TPSA) is a calculated descriptor related to the polar surface contributions of atoms in a molecule.",
+        "mole": "One mole contains exactly 6.02214076 × 10²³ specified entities. Molar mass is commonly expressed in grams per mole.",
+        "geometry": "Molecular geometry describes the three-dimensional arrangement of atoms. Electron-pair repulsion models are often used for introductory predictions.",
+        "reaction": "A chemical reaction rearranges atoms as reactants form products. A balanced equation represents conservation of each element."
+    }
+    question = st.text_input("Your question", placeholder="Example: What is molecular geometry?")
+    if st.button("Explain concept"):
+        q = question.lower()
+        matches = [v for k,v in knowledge.items() if k in q]
+        if matches: st.info(matches[0])
+        elif any(w in q for w in ["acid","base","ph"]):
+            st.info("In the Brønsted–Lowry model, acids donate protons and bases accept protons. pH is commonly used to describe acidity in aqueous solutions.")
+        elif any(w in q for w in ["atom","element","proton"]):
+            st.info("An element is defined by its number of protons. Atoms contain protons and neutrons in the nucleus, with electrons around the nucleus.")
+        else:
+            st.warning("I don't have a prepared explanation for that wording yet. Try asking about bonds, SMILES, LogP, TPSA, moles, geometry or reactions.")
+    st.caption("For an actual generative AI chatbot, connect a trusted model API using Streamlit secrets. Never place API keys directly in public GitHub code.")
+
+elif page == "Research Report":
+    st.subheader("▤ Student Research Report")
+    st.write("Create a concise project record from the information entered in this session.")
+    title = st.text_input("Project title", "Computational Exploration of Molecular Structures")
+    objective = st.text_area("Project objective", "To explore molecular structures and understand how molecular descriptors help describe chemical properties.")
+    observation = st.text_area("Observations", "Record the molecule studied, its 3D shape, and the calculated molecular descriptors.")
+    report = st.session_state.get("last_report", {})
+    report_text = f"""NEBULA CHEM — STUDENT PROJECT REPORT
+Generated: {datetime.now().strftime('%d %B %Y, %I:%M %p')}
+
+Student: {student_name or 'Not provided'}
+Registration number: {reg_no or 'Not provided'}
+Project: {title}
+
+OBJECTIVE
+{objective}
+
+MOLECULE ANALYSIS
+"""
+    if report:
+        report_text += "\n".join(f"{k}: {v}" for k,v in report.items())
+    else:
+        report_text += "No molecular descriptor analysis has been saved in this session."
+    report_text += f"\n\nOBSERVATIONS\n{observation}\n\nNote: Computational learning output; verify scientific claims with course references."
+    st.text_area("Report preview", report_text, height=360)
+    st.download_button("⬇ Download report (.txt)", report_text,
+                       file_name="nebula_chem_project_report.txt", mime="text/plain")
+    st.info("Run a molecular analysis first to include calculated descriptors in this report.")
 
 st.markdown("---")
-st.markdown('<p class="small">ChemLab AI · Made for learning and exploration · Verify important calculations with your course materials.</p>', unsafe_allow_html=True)
+st.markdown("<div style='text-align:center;color:#7890b2;font-size:.8rem;letter-spacing:1px'>NEBULA CHEM · MOLECULAR UNIVERSE · BUILT FOR SCIENTIFIC LEARNING</div>", unsafe_allow_html=True)
