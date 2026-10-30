@@ -1,2 +1,6 @@
-streamlit>=1.35,<2
-sympy>=1.12,<2
+streamlit>=1.35
+rdkit
+py3Dmol
+plotly
+pandas
+sympy
